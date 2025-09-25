@@ -114,7 +114,7 @@ const ITEMS = [
   { key:"glasses_case", name:"メガネケースセット", price:6000 },
   { key:"bucket_shoulder", name:"ドロストショルダーバッグ", price:4000 },
   { key:"bucket_hat", name:"バケットハット", price:3800 },
-  { key:"bandana", name:"オーイシ武道館ネックストラップ", price:1800 },
+  { key:"neckstrap", name:"オーイシ武道館ネックストラップ", price:1800 },
   { key:"lanyard", name:"マイクマサ ランダムアクリルキーホルダー 全4種", price:1200 },
   { key:"tshirt_silkwhite", name:"Tシャツ SILK WHITE（31・32）", price:6000 },
   { key:"tshirt_pigmentA", name:"Tシャツ PIGMENT BLACK（33・34）", price:6000 },
@@ -241,7 +241,7 @@ document.getElementById("btnReset").addEventListener("click", () => {
 });
 document.getElementById("btnSample").addEventListener("click", () => {
   // 適当にサンプル数量を入れる（編集自由）
-  const preset = { tshirt_white:1, penlight:1, rubber_band_day1:2, gacha:4, cap:1 };
+  const preset = { tshirt_white:1, penlight:1, rubber_band_day1:2, gachaA:4, cap:1 };
   for (const k in inputs) inputs[k].value = preset[k] ?? 0;
   updateAll();
 });
