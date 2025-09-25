@@ -32,7 +32,6 @@
     @media (min-width: 880px){ .grid { grid-template-columns: 1fr; } }
     footer { width: var(--w); margin: 20px auto 40px; color:#777; font-size: 12px; }
   </style>
-  <!-- 画像保存用：html2canvas（CDN） -->
   <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
@@ -75,7 +74,9 @@
         <button class="toolbtn" id="btnSaveImg">この内容を画像保存</button>
         <button class="toolbtn primary" id="btnTweet">Tweet（文面を作成）</button>
       </div>
-      <p class="note">※Web仕様上、ツイートに画像を自動添付することはできません。まず「画像保存」で保存→ツイート画面で画像を添付してください。</p>
+    </div>
+    <div class="note noshot">
+      ※Web仕様上、ツイートに画像を自動添付することはできません。まず「画像保存」で保存→ツイート画面で画像を添付してください。
     </div>
   </section>
 </main>
@@ -85,12 +86,7 @@
 </footer>
 
 <script>
-/* ====== 1) 品目の定義（必要に応じて編集） ======
-   name: 表示名, price: 税込価格（整数・円）, key: HTMLのid用
-   画像には多数品目があるため最小セット＋代表例を用意。追加は簡単です。
-*/
 const ITEMS = [
-  // ---- A面（画像1の代表例） ----
   { key:"tshirt_white", name:"Tシャツ WHITE", price:5000 },
   { key:"tshirt_pigment", name:"Tシャツ PIGMENT BLACK", price:5000 },
   { key:"longsleeve_logo", name:"ロングT WHITE（CLUB014限定）", price:6500 },
@@ -110,7 +106,6 @@ const ITEMS = [
   { key:"big_acrylic", name:"BIGステッカー＆スマホステッカー", price:900 },
   { key:"shopper", name:"ショッパー", price:600 },
 
-  // ---- B面（画像2の代表例） ----
   { key:"glasses_case", name:"メガネケースセット", price:6000 },
   { key:"bucket_shoulder", name:"ドロストショルダーバッグ", price:4000 },
   { key:"bucket_hat", name:"バケットハット", price:3800 },
@@ -125,27 +120,28 @@ const ITEMS = [
   { key:"cap", name:"キャップ", price:4000 },
   { key:"boxer_gray", name:"ボクサーパンツ GRAY", price:4500 },
   { key:"boxer_yellow", name:"ボクサーパンツ YELLOW", price:4500 },
-  { key:"socks_white", name:"ソックス WHITE×YELLOW」", price:2500 },
-  { key:"socks_gray", name:"ソックス GRAY×YELLOW」", price:2500 },
+  { key:"socks_white", name:"ソックス WHITE×YELLOW", price:2500 },
+  { key:"socks_gray", name:"ソックス GRAY×YELLOW", price:2500 },
   { key:"towel_vol2", name:"オーイシ武道館Vol.2 スポーツタオル", price:2500 },
   { key:"penlight_vol2", name:"オーイシ武道館Vol.2 ペンライト", price:1900 },
-  { key:"sensu", name:"オーイシ武道館Vol.2 クリアうちわ）", price:1900 },
+  { key:"sensu", name:"オーイシ武道館Vol.2 クリアうちわ", price:1900 },
   { key:"beadsstrap", name:"オーイシ武道館Vol.2 スマホビーズストラップ", price:1900 },
   { key:"overall", name:"オーイシマサヨシ×Leeコラボ オーバーオール", price:19800 },
   { key:"tshirt_powerA", name:"J-POWERコラボTシャツ（エレクトリックパレード）", price:3000 },
   { key:"tshirt_powerB", name:"J-POWERコラボTシャツ（でんき犬）", price:3000 },
   { key:"towel_power", name:"J-POWERコラボタオル（でんき犬）", price:2000 },
 
-  // ---- ガチャ ----
   { key:"gachaA", name:"ガチャA（全13種）", price:500 },
   { key:"gachaB", name:"ガチャB（全12種＋シークレット1種）", price:500 },
 ];
 
-/* ====== 2) ユーティリティ ====== */
 const yen = n => "¥" + n.toLocaleString("ja-JP");
-const clampInt = v => Math.max(0, Math.min(9999, parseInt(v || "0", 10) || 0));
+const clampInt = v => {
+  if (v === "" || v === null || v === undefined) return 0;
+  const n = parseInt(v, 10);
+  return Math.max(0, Math.min(9999, Number.isFinite(n) ? n : 0));
+};
 
-/* ====== 3) テーブル描画 ====== */
 const tbody = document.getElementById("itemsBody");
 const inputs = {};
 function renderTable() {
@@ -167,7 +163,8 @@ function renderTable() {
     const input = document.createElement("input");
     input.type = "number";
     input.min = "0"; input.max = "9999";
-    input.value = "0";
+    input.value = "";  // 空欄初期化
+    input.placeholder = "0";
     input.className = "qty";
     input.id = "qty_" + item.key;
     input.addEventListener("input", updateAll);
@@ -186,38 +183,27 @@ function renderTable() {
 }
 renderTable();
 
-/* ====== 4) 計算＆サマリー ====== */
 function getCart() {
   const cart = [];
   for (const item of ITEMS) {
     const qty = clampInt(inputs[item.key].value);
-    if (qty > 0) {
-      cart.push({
-        ...item,
-        qty,
-        subtotal: item.price * qty
-      });
-    }
+    if (qty > 0) cart.push({ ...item, qty, subtotal: item.price * qty });
   }
   return cart;
 }
 function updateAll() {
   const cart = getCart();
-  // 小計セル
   for (const item of ITEMS) {
     const qty = clampInt(inputs[item.key].value);
     document.getElementById("sub_" + item.key).textContent = yen(item.price * qty);
   }
-  // 合計
   const totalCount = cart.reduce((a,c)=>a+c.qty, 0);
   const totalPrice = cart.reduce((a,c)=>a+c.subtotal, 0);
-  document.getElementById("footUnit").textContent = ""; // 空欄（使わない）
   document.getElementById("footCount").textContent = totalCount.toLocaleString("ja-JP");
   document.getElementById("footTotal").textContent = yen(totalPrice);
   document.getElementById("badgeCount").textContent = `${totalCount.toLocaleString("ja-JP")} 点`;
   document.getElementById("grandTotal").textContent = yen(totalPrice);
 
-  // 明細
   const ul = document.getElementById("summaryList");
   ul.innerHTML = "";
   if (cart.length === 0) {
@@ -234,49 +220,39 @@ function updateAll() {
 }
 updateAll();
 
-/* ====== 5) 操作ボタン ====== */
 document.getElementById("btnReset").addEventListener("click", () => {
-  for (const k in inputs) inputs[k].value = 0;
+  for (const k in inputs) inputs[k].value = "";
   updateAll();
 });
 document.getElementById("btnSample").addEventListener("click", () => {
-  // 適当にサンプル数量を入れる（編集自由）
   const preset = { tshirt_white:1, penlight:1, rubber_band_day1:2, gachaA:4, cap:1 };
-  for (const k in inputs) inputs[k].value = preset[k] ?? 0;
+  for (const k in inputs) inputs[k].value = preset[k] ?? "";
   updateAll();
 });
 
-/* ====== 6) 画像として保存（最下段のカード） ====== */
 document.getElementById("btnSaveImg").addEventListener("click", async () => {
   const target = document.getElementById("resultCard");
-  const canvas = await html2canvas(target, { scale: 2, backgroundColor: "#ffffff" });
+  const canvas = await html2canvas(target, { scale: 2, backgroundColor: "#ffffff",
+    ignoreElements: el => el.classList.contains("noshot")
+  });
   const link = document.createElement("a");
   link.download = `oishi-ssa-goods_${new Date().toISOString().slice(0,10)}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
 });
 
-/* ====== 7) Tweet（文面＋URLを自動） ====== */
 document.getElementById("btnTweet").addEventListener("click", () => {
   const cart = getCart();
   const totalCount = cart.reduce((a,c)=>a+c.qty, 0);
   const totalPrice = cart.reduce((a,c)=>a+c.subtotal, 0);
-
   const lines = [];
   lines.push(`購入予定：${totalCount}点 / 合計 ${yen(totalPrice)}`);
-  if (cart.length) {
-    lines.push(cart.map(r => `${r.name}×${r.qty}`).join(" / "));
-  }
-  // ハッシュタグやURLは自由に変更OK
-  const hashtags = ["オーイシマサヨシ", "SSA", "物販"].join(",");
+  if (cart.length) lines.push(cart.map(r => `${r.name}×${r.qty}`).join(" / "));
+  const hashtags = ["オーイシマサヨシ","SSA","物販"].join(",");
   const text = encodeURIComponent(lines.join("\n"));
-  const url  = encodeURIComponent(location.href); // このツールのURL
+  const url  = encodeURIComponent(location.href);
   const intent = `https://twitter.com/intent/tweet?text=${text}&url=${url}&hashtags=${hashtags}`;
   window.open(intent, "_blank");
-
-  // （参考）スマホの一部では共有APIで画像付きシェアができる可能性あり
-  // ただしTwitterアプリが受け取るかは環境次第なので保証しません。
-  // navigator.canShare && ... を使った実装は必要なら追記可。
 });
 </script>
 </body>
