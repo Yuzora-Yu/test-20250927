@@ -26,6 +26,11 @@
     /* 結果カード（画像保存対象） */
     #resultCard { background:#fff; border:1px solid #eee; border-radius:8px; padding:16px; margin-top:16px; box-shadow: 0 8px 26px rgba(0,0,0,.04); }
     #summaryList { margin: 8px 0 0; padding-left: 1.2em; }
+    #summaryList { 
+      white-space: pre;
+      font-variant-numeric: tabular-nums;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono CJK JP", monospace;
+    }
     #summaryList li { margin: 2px 0; }
     .badge { display:inline-block; padding: 2px 8px; border-radius: 999px; background:#b80d21; color:#fff; font-weight:700; }
 
@@ -143,6 +148,15 @@ const clampInt = v => {
   const n = parseInt(v, 10);
   return Math.max(0, Math.min(9999, Number.isFinite(n) ? n : 0));
 };
+// 全角=2、半角=1として“表示幅”を数える
+const visLen = s => Array.from(s).reduce((n,ch)=> n + (/[ -~]/.test(ch) ? 1 : 2), 0);
+// 指定幅まで全角スペースで右詰め
+const padName = (name, width) => {
+  const pad = Math.max(width - visLen(name), 0);
+  return name + "　".repeat(pad);
+};
+// 最長商品名 + 3 文字ぶんを上限にする
+const MAX_NAME_WIDTH = Math.max(...ITEMS.map(it => visLen(it.name))) + 3;
 
 /* ---- テーブル描画 ---- */
 const tbody = document.getElementById("itemsBody");
@@ -217,8 +231,13 @@ function updateAll() {
   } else {
     for (const row of cart) {
       const li = document.createElement("li");
-      li.textContent = `${row.name} × ${row.qty} ＝ ${yen(row.subtotal)}`;
-      ul.appendChild(li);
+
+const MAX_NAME_WIDTH = 50;
+for (const row of cart) {
+  const li = document.createElement("li");
+  li.textContent = `${formatName(row.name, MAX_NAME_WIDTH)} × ${row.qty} ＝ ${yen(row.subtotal)}`;
+  ul.appendChild(li);
+}
     }
   }
 }
