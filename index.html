@@ -7,10 +7,10 @@
   <style>
     :root { --w: min(1100px, 96vw); --gap: 12px; }
     body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif; line-height: 1.6; margin: 0; color: #222; background: #fafafa; }
-    header, main { width: var(--w); margin: 20px auto; }
+    header, main, footer { width: var(--w); margin: 20px auto; }
     header h1 { margin: 8px 0 0; font-size: clamp(20px, 3.4vw, 28px); }
     header p { margin: 6px 0 0; color: #555; }
-    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 0; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
     .toolbtn { padding: 8px 12px; border: 1px solid #ccc; background: #fff; border-radius: 6px; cursor: pointer; }
     .toolbtn.primary { background:#b80d21; color:#fff; border-color:#b80d21; }
     .toolbtn:disabled { opacity:.5; cursor:not-allowed; }
@@ -23,14 +23,14 @@
     tfoot td { background:#fbfbfb; font-weight: 600; }
     .note { color:#666; font-size: 12px; }
 
-    /* 結果キャプチャ対象 */
+    /* 結果カード（画像保存対象） */
     #resultCard { background:#fff; border:1px solid #eee; border-radius:8px; padding:16px; margin-top:16px; box-shadow: 0 8px 26px rgba(0,0,0,.04); }
     #summaryList { margin: 8px 0 0; padding-left: 1.2em; }
     #summaryList li { margin: 2px 0; }
     .badge { display:inline-block; padding: 2px 8px; border-radius: 999px; background:#b80d21; color:#fff; font-weight:700; }
+
     .grid { display:grid; gap: var(--gap); grid-template-columns: 1fr; }
     @media (min-width: 880px){ .grid { grid-template-columns: 1fr; } }
-    footer { width: var(--w); margin: 20px auto 40px; color:#777; font-size: 12px; }
   </style>
   <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
@@ -66,24 +66,27 @@
       </tfoot>
     </table>
 
+    <!-- ここが保存対象（ボタンは外側に出しました） -->
     <div id="resultCard">
       <div><span class="badge" id="badgeCount">0 点</span> / 合計 <strong id="grandTotal">¥0</strong></div>
       <ul id="summaryList" aria-live="polite"></ul>
+    </div>
 
-      <div class="toolbar" style="margin-top:10px">
-        <button class="toolbtn" id="btnSaveImg">この内容を画像保存</button>
-        <button class="toolbtn primary" id="btnTweet">Tweet（文面を作成）</button>
-      </div>
+    <!-- ボタンは枠の外（画像に入らない） -->
+    <div class="toolbar">
+      <button class="toolbtn" id="btnSaveImg">この内容を画像保存</button>
+      <button class="toolbtn primary" id="btnTweet">Tweet（文面を作成）</button>
     </div>
   </section>
 </main>
 
-<footer>
+<footer class="note">
   <p>※Web仕様上、ツイートに画像を自動添付することはできません。まず「画像保存」で保存→ツイート画面で画像を添付してください。</p>
   <p>※非公式の個人ツールです。価格・品目はお手元でご確認ください。</p>
 </footer>
 
 <script>
+/* ---- 品目定義 ---- */
 const ITEMS = [
   { key:"tshirt_white", name:"Tシャツ WHITE", price:5000 },
   { key:"tshirt_pigment", name:"Tシャツ PIGMENT BLACK", price:5000 },
@@ -133,6 +136,7 @@ const ITEMS = [
   { key:"gachaB", name:"ガチャB（全12種＋シークレット1種）", price:500 },
 ];
 
+/* ---- ユーティリティ ---- */
 const yen = n => "¥" + n.toLocaleString("ja-JP");
 const clampInt = v => {
   if (v === "" || v === null || v === undefined) return 0;
@@ -140,6 +144,7 @@ const clampInt = v => {
   return Math.max(0, Math.min(9999, Number.isFinite(n) ? n : 0));
 };
 
+/* ---- テーブル描画 ---- */
 const tbody = document.getElementById("itemsBody");
 const inputs = {};
 function renderTable() {
@@ -161,7 +166,7 @@ function renderTable() {
     const input = document.createElement("input");
     input.type = "number";
     input.min = "0"; input.max = "9999";
-    input.value = "";  // 空欄初期化
+    input.value = "";             // 初期は空欄
     input.placeholder = "0";
     input.className = "qty";
     input.id = "qty_" + item.key;
@@ -181,6 +186,7 @@ function renderTable() {
 }
 renderTable();
 
+/* ---- 計算とサマリー ---- */
 function getCart() {
   const cart = [];
   for (const item of ITEMS) {
@@ -218,6 +224,7 @@ function updateAll() {
 }
 updateAll();
 
+/* ---- 操作ボタン ---- */
 document.getElementById("btnReset").addEventListener("click", () => {
   for (const k in inputs) inputs[k].value = "";
   updateAll();
@@ -228,26 +235,24 @@ document.getElementById("btnSample").addEventListener("click", () => {
   updateAll();
 });
 
+/* ---- 画像保存（枠= #resultCard のみ） ---- */
 document.getElementById("btnSaveImg").addEventListener("click", async () => {
   const target = document.getElementById("resultCard");
-  const canvas = await html2canvas(target, { scale: 2, backgroundColor: "#ffffff",
-    ignoreElements: el => el.classList.contains("noshot")
-  });
+  const canvas = await html2canvas(target, { scale: 2, backgroundColor: "#ffffff" });
   const link = document.createElement("a");
   link.download = `oishi-ssa-goods_${new Date().toISOString().slice(0,10)}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
 });
 
+/* ---- Tweet（合計点数と合計金額のみ） ---- */
 document.getElementById("btnTweet").addEventListener("click", () => {
   const cart = getCart();
   const totalCount = cart.reduce((a,c)=>a+c.qty, 0);
   const totalPrice = cart.reduce((a,c)=>a+c.subtotal, 0);
-  const lines = [];
-  lines.push(`購入予定：${totalCount}点 / 合計 ${yen(totalPrice)}`);
-  if (cart.length) lines.push(cart.map(r => `${r.name}×${r.qty}`).join(" / "));
-  const hashtags = ["オーイシマサヨシ","SSA","物販"].join(",");
-  const text = encodeURIComponent(lines.join("\n"));
+  const textLine = `購入予定：${totalCount}点 / 合計 ${yen(totalPrice)}`;
+  const hashtags = ["オーイシマサヨシ","オーイシSSA"].join(",");
+  const text = encodeURIComponent(textLine);
   const url  = encodeURIComponent(location.href);
   const intent = `https://twitter.com/intent/tweet?text=${text}&url=${url}&hashtags=${hashtags}`;
   window.open(intent, "_blank");
