@@ -26,17 +26,30 @@
     /* 結果カード（画像保存対象） */
     #resultCard { background:#fff; border:1px solid #eee; border-radius:8px; padding:16px; margin-top:16px; box-shadow: 0 8px 26px rgba(0,0,0,.04); }
 
-    /* ▼下部リストだけ左右2カラム（左：商品名 / 右：×数量＝金額） */
+    /* ▼下部リスト：左=商品名 / 右=（×）数量（＝）金額 を固定幅で整列 */
     #summaryList { margin: 8px 0 0; padding-left: 1.2em; }
     #summaryList li { margin: 2px 0; list-style: disc; }
     .summary-row {
       display: grid;
-      grid-template-columns: 1fr auto;
-      column-gap: 12px;
+      /* name | × | qty(3桁) | ＝ | amount(¥+7桁+カンマ分) */
+      grid-template-columns: 1fr auto 4ch auto 11ch;
+      column-gap: 6px;
       align-items: baseline;
     }
+    /* 数値は等幅＆タブラーで幅ブレ回避 */
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Noto Sans Mono CJK JP", monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0; /* 一部の等幅での間延び防止 */
+    }
     .summary-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .summary-meta { white-space: nowrap; text-align: right; }
+    .summary-sym  { opacity: .9; }           /* 「×」「＝」 */
+    .summary-qty  { text-align: right; }     /* 3桁想定 → 4ch（前後余白含む） */
+    .summary-amt  { text-align: right; }     /* 「¥9,999,999」想定 → 11ch */
+    /* 任意：スマホで右側が詰まりすぎる場合は少し余白 */
+    @media (max-width: 420px){
+      .summary-row { column-gap: 4px; grid-template-columns: 1fr auto 4ch auto 12ch; }
+    }
 
     .badge { display:inline-block; padding: 2px 8px; border-radius: 999px; background:#b80d21; color:#fff; font-weight:700; }
 
@@ -152,132 +165,4 @@ const yen = n => "¥" + n.toLocaleString("ja-JP");
 const clampInt = v => {
   if (v === "" || v === null || v === undefined) return 0;
   const n = parseInt(v, 10);
-  return Math.max(0, Math.min(9999, Number.isFinite(n) ? n : 0));
-};
-
-/* ---- テーブル描画 ---- */
-const tbody = document.getElementById("itemsBody");
-const inputs = {};
-function renderTable() {
-  tbody.innerHTML = "";
-  for (const item of ITEMS) {
-    const tr = document.createElement("tr");
-
-    const tdName = document.createElement("td");
-    tdName.textContent = item.name;
-    tr.appendChild(tdName);
-
-    const tdPrice = document.createElement("td");
-    tdPrice.className = "num";
-    tdPrice.textContent = yen(item.price);
-    tr.appendChild(tdPrice);
-
-    const tdQty = document.createElement("td");
-    tdQty.className = "num";
-    const input = document.createElement("input");
-    input.type = "number";
-    input.min = "0"; input.max = "9999";
-    input.value = "";             // 初期は空欄
-    input.placeholder = "0";
-    input.className = "qty";
-    input.id = "qty_" + item.key;
-    input.addEventListener("input", updateAll);
-    inputs[item.key] = input;
-    tdQty.appendChild(input);
-    tr.appendChild(tdQty);
-
-    const tdSub = document.createElement("td");
-    tdSub.className = "num";
-    tdSub.id = "sub_" + item.key;
-    tdSub.textContent = yen(0);
-    tr.appendChild(tdSub);
-
-    tbody.appendChild(tr);
-  }
-}
-renderTable();
-
-/* ---- 計算とサマリー ---- */
-function getCart() {
-  const cart = [];
-  for (const item of ITEMS) {
-    const qty = clampInt(inputs[item.key].value);
-    if (qty > 0) cart.push({ ...item, qty, subtotal: item.price * qty });
-  }
-  return cart;
-}
-function updateAll() {
-  const cart = getCart();
-  for (const item of ITEMS) {
-    const qty = clampInt(inputs[item.key].value);
-    document.getElementById("sub_" + item.key).textContent = yen(item.price * qty);
-  }
-  const totalCount = cart.reduce((a,c)=>a+c.qty, 0);
-  const totalPrice = cart.reduce((a,c)=>a+c.subtotal, 0);
-  document.getElementById("footCount").textContent = totalCount.toLocaleString("ja-JP");
-  document.getElementById("footTotal").textContent = yen(totalPrice);
-  document.getElementById("badgeCount").textContent = `${totalCount.toLocaleString("ja-JP")} 点`;
-  document.getElementById("grandTotal").textContent = yen(totalPrice);
-
-  const ul = document.getElementById("summaryList");
-  ul.innerHTML = "";
-  if (cart.length === 0) {
-    const li = document.createElement("li");
-    li.textContent = "購入品はまだありません。";
-    ul.appendChild(li);
-  } else {
-    // ▼下部のリストだけレイアウト変更（bulletは維持）
-    for (const row of cart) {
-      const li   = document.createElement("li");           // list-item のまま（黒丸維持）
-      const rowDiv = document.createElement("div");        // 中身だけ2カラム化
-      rowDiv.className = "summary-row";
-      const left  = document.createElement("span");
-      left.className = "summary-name";
-      left.textContent = row.name;
-      const right = document.createElement("span");
-      right.className = "summary-meta";
-      right.textContent = `× ${row.qty} ＝ ${yen(row.subtotal)}`;
-      rowDiv.append(left, right);
-      li.appendChild(rowDiv);
-      ul.appendChild(li);
-    }
-  }
-}
-updateAll();
-
-/* ---- 操作ボタン ---- */
-document.getElementById("btnReset").addEventListener("click", () => {
-  for (const k in inputs) inputs[k].value = "";
-  updateAll();
-});
-document.getElementById("btnSample").addEventListener("click", () => {
-  const preset = { tshirt_white:1, penlight:1, rubber_band_day1:2, gachaA:4, cap:1 };
-  for (const k in inputs) inputs[k].value = preset[k] ?? "";
-  updateAll();
-});
-
-/* ---- 画像保存（枠= #resultCard のみ） ---- */
-document.getElementById("btnSaveImg").addEventListener("click", async () => {
-  const target = document.getElementById("resultCard");
-  const canvas = await html2canvas(target, { scale: 2, backgroundColor: "#ffffff" });
-  const link = document.createElement("a");
-  link.download = `oishi-ssa-goods_${new Date().toISOString().slice(0,10)}.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-});
-
-/* ---- Tweet（合計点数と合計金額のみ） ---- */
-document.getElementById("btnTweet").addEventListener("click", () => {
-  const cart = getCart();
-  const totalCount = cart.reduce((a,c)=>a+c.qty, 0);
-  const totalPrice = cart.reduce((a,c)=>a+c.subtotal, 0);
-  const textLine = `購入予定：${totalCount}点 / 合計 ${yen(totalPrice)}`;
-  const hashtags = ["オーイシマサヨシ","オーイシSSA"].join(",");
-  const text = encodeURIComponent(textLine);
-  const url  = encodeURIComponent(location.href);
-  const intent = `https://twitter.com/intent/tweet?text=${text}&url=${url}&hashtags=${hashtags}`;
-  window.open(intent, "_blank");
-});
-</script>
-</body>
-</html>
+  return Math.max(0, Math.min(9999, Numb
