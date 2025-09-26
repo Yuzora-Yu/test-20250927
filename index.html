@@ -26,24 +26,17 @@
     /* 結果カード（画像保存対象） */
     #resultCard { background:#fff; border:1px solid #eee; border-radius:8px; padding:16px; margin-top:16px; box-shadow: 0 8px 26px rgba(0,0,0,.04); }
 
-    /* ▼下部サマリーだけレイアウトを安定化（左：商品名 / 右：数量×金額） */
-    #summaryList { margin: 8px 0 0; padding: 0; list-style: none; }
-    #summaryList li {
+    /* ▼下部リストだけ左右2カラム（左：商品名 / 右：×数量＝金額） */
+    #summaryList { margin: 8px 0 0; padding-left: 1.2em; }
+    #summaryList li { margin: 2px 0; list-style: disc; }
+    .summary-row {
       display: grid;
-      grid-template-columns: 1fr auto; /* 左は可変、右は内容幅 */
-      gap: 12px;
+      grid-template-columns: 1fr auto;
+      column-gap: 12px;
       align-items: baseline;
-      margin: 6px 0;
     }
-    /* 擬似的な黒丸（見た目維持用） */
-    #summaryList li::before {
-      content: "•";
-      margin-right: 8px;
-      color: #222;
-    }
-    /* 実体 */
-    .summary-name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .summary-meta  { white-space: nowrap; text-align: right; }
+    .summary-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .summary-meta { white-space: nowrap; text-align: right; }
 
     .badge { display:inline-block; padding: 2px 8px; border-radius: 999px; background:#b80d21; color:#fff; font-weight:700; }
 
@@ -226,4 +219,65 @@ function updateAll() {
   document.getElementById("badgeCount").textContent = `${totalCount.toLocaleString("ja-JP")} 点`;
   document.getElementById("grandTotal").textContent = yen(totalPrice);
 
-  const ul = document.getEle
+  const ul = document.getElementById("summaryList");
+  ul.innerHTML = "";
+  if (cart.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "購入品はまだありません。";
+    ul.appendChild(li);
+  } else {
+    // ▼下部のリストだけレイアウト変更（bulletは維持）
+    for (const row of cart) {
+      const li   = document.createElement("li");           // list-item のまま（黒丸維持）
+      const rowDiv = document.createElement("div");        // 中身だけ2カラム化
+      rowDiv.className = "summary-row";
+      const left  = document.createElement("span");
+      left.className = "summary-name";
+      left.textContent = row.name;
+      const right = document.createElement("span");
+      right.className = "summary-meta";
+      right.textContent = `× ${row.qty} ＝ ${yen(row.subtotal)}`;
+      rowDiv.append(left, right);
+      li.appendChild(rowDiv);
+      ul.appendChild(li);
+    }
+  }
+}
+updateAll();
+
+/* ---- 操作ボタン ---- */
+document.getElementById("btnReset").addEventListener("click", () => {
+  for (const k in inputs) inputs[k].value = "";
+  updateAll();
+});
+document.getElementById("btnSample").addEventListener("click", () => {
+  const preset = { tshirt_white:1, penlight:1, rubber_band_day1:2, gachaA:4, cap:1 };
+  for (const k in inputs) inputs[k].value = preset[k] ?? "";
+  updateAll();
+});
+
+/* ---- 画像保存（枠= #resultCard のみ） ---- */
+document.getElementById("btnSaveImg").addEventListener("click", async () => {
+  const target = document.getElementById("resultCard");
+  const canvas = await html2canvas(target, { scale: 2, backgroundColor: "#ffffff" });
+  const link = document.createElement("a");
+  link.download = `oishi-ssa-goods_${new Date().toISOString().slice(0,10)}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+});
+
+/* ---- Tweet（合計点数と合計金額のみ） ---- */
+document.getElementById("btnTweet").addEventListener("click", () => {
+  const cart = getCart();
+  const totalCount = cart.reduce((a,c)=>a+c.qty, 0);
+  const totalPrice = cart.reduce((a,c)=>a+c.subtotal, 0);
+  const textLine = `購入予定：${totalCount}点 / 合計 ${yen(totalPrice)}`;
+  const hashtags = ["オーイシマサヨシ","オーイシSSA"].join(",");
+  const text = encodeURIComponent(textLine);
+  const url  = encodeURIComponent(location.href);
+  const intent = `https://twitter.com/intent/tweet?text=${text}&url=${url}&hashtags=${hashtags}`;
+  window.open(intent, "_blank");
+});
+</script>
+</body>
+</html>
