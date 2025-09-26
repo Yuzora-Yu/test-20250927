@@ -26,22 +26,22 @@
     /* 結果カード（画像保存対象） */
     #resultCard { background:#fff; border:1px solid #eee; border-radius:8px; padding:16px; margin-top:16px; box-shadow: 0 8px 26px rgba(0,0,0,.04); }
 
-    /* サマリー（左：商品名 / 右：数量×金額） */
+    /* ▼下部サマリーだけレイアウトを安定化（左：商品名 / 右：数量×金額） */
     #summaryList { margin: 8px 0 0; padding: 0; list-style: none; }
-    #summaryList li { 
-      margin: 4px 0;
+    #summaryList li {
       display: grid;
-      grid-template-columns: 1fr auto; /* ←左は伸びる、右は内容幅 */
-      column-gap: 12px;
+      grid-template-columns: 1fr auto; /* 左は可変、右は内容幅 */
+      gap: 12px;
       align-items: baseline;
+      margin: 6px 0;
     }
-    /* 擬似的な黒丸（元の雰囲気維持用。不要なら削除） */
+    /* 擬似的な黒丸（見た目維持用） */
     #summaryList li::before {
       content: "•";
       margin-right: 8px;
       color: #222;
     }
-    /* グリッド内の実体はこの2つのspan */
+    /* 実体 */
     .summary-name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .summary-meta  { white-space: nowrap; text-align: right; }
 
@@ -179,4 +179,51 @@ function renderTable() {
     tdPrice.textContent = yen(item.price);
     tr.appendChild(tdPrice);
 
-    const tdQty = document.createE
+    const tdQty = document.createElement("td");
+    tdQty.className = "num";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0"; input.max = "9999";
+    input.value = "";             // 初期は空欄
+    input.placeholder = "0";
+    input.className = "qty";
+    input.id = "qty_" + item.key;
+    input.addEventListener("input", updateAll);
+    inputs[item.key] = input;
+    tdQty.appendChild(input);
+    tr.appendChild(tdQty);
+
+    const tdSub = document.createElement("td");
+    tdSub.className = "num";
+    tdSub.id = "sub_" + item.key;
+    tdSub.textContent = yen(0);
+    tr.appendChild(tdSub);
+
+    tbody.appendChild(tr);
+  }
+}
+renderTable();
+
+/* ---- 計算とサマリー ---- */
+function getCart() {
+  const cart = [];
+  for (const item of ITEMS) {
+    const qty = clampInt(inputs[item.key].value);
+    if (qty > 0) cart.push({ ...item, qty, subtotal: item.price * qty });
+  }
+  return cart;
+}
+function updateAll() {
+  const cart = getCart();
+  for (const item of ITEMS) {
+    const qty = clampInt(inputs[item.key].value);
+    document.getElementById("sub_" + item.key).textContent = yen(item.price * qty);
+  }
+  const totalCount = cart.reduce((a,c)=>a+c.qty, 0);
+  const totalPrice = cart.reduce((a,c)=>a+c.subtotal, 0);
+  document.getElementById("footCount").textContent = totalCount.toLocaleString("ja-JP");
+  document.getElementById("footTotal").textContent = yen(totalPrice);
+  document.getElementById("badgeCount").textContent = `${totalCount.toLocaleString("ja-JP")} 点`;
+  document.getElementById("grandTotal").textContent = yen(totalPrice);
+
+  const ul = document.getEle
